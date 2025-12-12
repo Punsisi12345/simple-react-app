@@ -1,4 +1,4 @@
-name: Deploy Simple React App to EC2
+name: Deploy Portfolio
 
 on:
   push:
@@ -9,40 +9,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t simple-react-app:latest .
-
-      - name: Archive build context
-        run: tar -czf app.tar.gz .
-
-      - name: Copy files to EC2
-        uses: appleboy/scp-action@v0.1.9
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          source: "app.tar.gz"
-          target: "~/simple-react-app/"
+          node-version: 22
 
-      - name: Deploy on EC2 via SSH
-        uses: appleboy/ssh-action@v0.1.9
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            mkdir -p ~/simple-react-app
-            cd ~/simple-react-app
-            tar -xzf app.tar.gz
-            # Stop previous container if exists
-            docker stop simple-react-container || true
-            docker rm simple-react-container || true
-            # Build Docker image on EC2
-            docker build -t simple-react-app:latest .
-            # Run container
-            docker run -d -p 80:80 --name simple-react-container simple-react-app:latest
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
